@@ -7,6 +7,7 @@ import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.Random;
 
@@ -35,6 +36,8 @@ public class GridView extends View
     private void init()
     {
         this.nb_mines = 20;
+
+        this.end = false;
 
         this.col_covered = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.col_covered.setColor(0xFF000000);
@@ -103,7 +106,7 @@ public class GridView extends View
             return true;
         }
 
-        if (event.getActionMasked() == MotionEvent.ACTION_UP)
+        if (event.getActionMasked() == MotionEvent.ACTION_UP && !this.end)
         {
             int pos_x = (int) (event.getX() / this.size_x);
             int pos_y = (int) (event.getY() / this.size_y);
@@ -111,12 +114,22 @@ public class GridView extends View
             if (pos_x < this.nb_cells && pos_y < this.nb_cells)
             {
                 if (this.isMined[pos_x][pos_y])
+                {
+                    this.end = true;
+                    this.toast_lose.show();
+
                     for (int i = 0; i < this.nb_cells; i++)
                         for (int j = 0; j < this.nb_cells; j++)
                             this.isCovered[i][j] = false;
+                }
 
                 else
+                {
                     uncover_zero_cells(pos_x, pos_y);
+
+                    if (this.count_covered_cells() == this.nb_mines)
+                        this.toast_win.show();
+                }
             }
 
             invalidate();
@@ -227,7 +240,34 @@ public class GridView extends View
         }
     }
 
+    public void reset()
+    {
+        init();
+        invalidate();
+    }
+
+    public void set_toats(Toast toast_win, Toast toast_lose)
+    {
+        this.toast_win = toast_win;
+        this.toast_lose = toast_lose;
+    }
+
+    private int count_covered_cells()
+    {
+        int ret = 0;
+
+        for (int i = 0; i < this.nb_cells; i++)
+            for (int j = 0; j < this.nb_cells; j++)
+                if(this.isCovered[i][j])
+                    ret ++;
+
+        return ret;
+    }
+
+
     private int nb_mines;
+
+    private Boolean end;
 
     private Rect[][] grid;
 
@@ -242,4 +282,7 @@ public class GridView extends View
     private Paint col_uncovered;
     private Paint col_mined;
     private Paint col_M;
+
+    private Toast toast_win;
+    private Toast toast_lose;
 }
