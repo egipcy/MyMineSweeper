@@ -49,6 +49,7 @@ public class GridView extends View
         this.grid = new Rect[this.nb_cells][this.nb_cells];
         this.isCovered = new Boolean[this.nb_cells][this.nb_cells];
         this.isMined = init_mines();
+        this.numbers_in_cells = init_numbers();
 
         this.col_M = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.col_M.setColor(0xFF000000);
@@ -84,7 +85,12 @@ public class GridView extends View
                         canvas.drawText("M", this.grid[i][j].left + 14, this.grid[i][j].top + 72, this.col_M);
                     }
                     else
+                    {
                         canvas.drawRect(this.grid[i][j], this.col_uncovered);
+
+                        if (this.numbers_in_cells[i][j] != 0)
+                            canvas.drawText(String.valueOf(this.numbers_in_cells[i][j]), this.grid[i][j].left + 26, this.grid[i][j].top + 72, get_col_number(this.numbers_in_cells[i][j]));
+                    }
                 }
             }
     }
@@ -110,7 +116,7 @@ public class GridView extends View
                             this.isCovered[i][j] = false;
 
                 else
-                    this.isCovered[pos_x][pos_y] = false;
+                    uncover_zero_cells(pos_x, pos_y);
             }
 
             invalidate();
@@ -143,12 +149,91 @@ public class GridView extends View
         return ret;
     }
 
+    private int[][] init_numbers()
+    {
+        int[][] ret = new int[this.nb_cells][this.nb_cells];
+
+        for (int i = 0; i < this.nb_cells; i++)
+            for (int j = 0; j < this.nb_cells; j++)
+                if (!this.isMined[i][j])
+                {
+                    int nb_mines_added = 0;
+
+                    if (i > 0)
+                    {
+                        if (j > 0 && this.isMined[i - 1][j - 1])
+                            nb_mines_added++;
+                        if (j < this.nb_cells - 1 && this.isMined[i - 1][j + 1])
+                            nb_mines_added++;
+                        if (this.isMined[i - 1][j])
+                            nb_mines_added++;
+                    }
+
+                    if (i < this.nb_cells - 1) {
+                        if (j > 0 && this.isMined[i + 1][j - 1])
+                            nb_mines_added++;
+                        if (j < this.nb_cells - 1 && this.isMined[i + 1][j + 1])
+                            nb_mines_added++;
+                        if (this.isMined[i + 1][j])
+                            nb_mines_added++;
+                    }
+
+                    if (j > 0 && this.isMined[i][j - 1])
+                        nb_mines_added++;
+                    if (j < this.nb_cells - 1 && this.isMined[i][j + 1])
+                        nb_mines_added++;
+
+                    ret[i][j] = nb_mines_added;
+                }
+
+        return ret;
+    }
+
+    private Paint get_col_number(int num)
+    {
+        Paint ret = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        if (num == 1)
+            ret.setColor(0xFF0000FF);
+        else if (num == 2)
+            ret.setColor(0xFF00FF00);
+        else if (num == 3)
+            ret.setColor(0xFFFFFF00);
+        else
+            ret.setColor(0xFFFF0000);
+
+        ret.setTextSize(70);
+        return ret;
+    }
+
+    private void uncover_zero_cells(int pos_x, int pos_y)
+    {
+        if (pos_x >= 0 && pos_x < this.nb_cells && pos_y >= 0 && pos_y < this.nb_cells && this.isCovered[pos_x][pos_y])
+        {
+            this.isCovered[pos_x][pos_y] = false;
+
+            if (this.numbers_in_cells[pos_x][pos_y] == 0)
+            {
+                this.uncover_zero_cells(pos_x - 1, pos_y - 1);
+                this.uncover_zero_cells(pos_x - 1, pos_y);
+                this.uncover_zero_cells(pos_x - 1, pos_y + 1);
+                this.uncover_zero_cells(pos_x, pos_y - 1);
+                this.uncover_zero_cells(pos_x, pos_y);
+                this.uncover_zero_cells(pos_x, pos_y + 1);
+                this.uncover_zero_cells(pos_x + 1, pos_y - 1);
+                this.uncover_zero_cells(pos_x + 1, pos_y);
+                this.uncover_zero_cells(pos_x + 1, pos_y + 1);
+            }
+        }
+    }
+
     private int nb_mines;
 
     private Rect[][] grid;
 
     private Boolean[][] isCovered;
     private Boolean[][] isMined;
+    private int[][] numbers_in_cells;
 
     private int size_x;
     private int size_y;
