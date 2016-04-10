@@ -7,6 +7,7 @@ import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Random;
@@ -39,6 +40,9 @@ public class GridView extends View
 
         this.end = false;
 
+        this.isMarkedMode = false;
+        this.nb_marks = 0;
+
         this.col_covered = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.col_covered.setColor(0xFF000000);
 
@@ -48,11 +52,15 @@ public class GridView extends View
         this.col_mined = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.col_mined.setColor(0xFFFF0000);
 
+        this.col_marked = new Paint(Paint.ANTI_ALIAS_FLAG);
+        this.col_marked.setColor(0xFFFFFF00);
+
         this.nb_cells = 10;
         this.grid = new Rect[this.nb_cells][this.nb_cells];
         this.isCovered = new Boolean[this.nb_cells][this.nb_cells];
         this.isMined = init_mines();
         this.numbers_in_cells = init_numbers();
+        this.isMarked = new Boolean[this.nb_cells][this.nb_cells];
 
         this.col_M = new Paint(Paint.ANTI_ALIAS_FLAG);
         this.col_M.setColor(0xFF000000);
@@ -66,11 +74,11 @@ public class GridView extends View
             {
                 this.grid[i][j] = new Rect(i * this.size_x + size_x / 10, j * this.size_y + size_y / 10, (i + 1) * this.size_x, (j + 1) * this.size_y);
                 this.isCovered[i][j] = true;
+                this.isMarked[i][j] = false;
             }
-
-
     }
 
+    //@Override
     protected void onDraw(Canvas canvas)
     {
         super.onDraw(canvas);
@@ -79,7 +87,13 @@ public class GridView extends View
             for (int j = 0; j < this.nb_cells; j++)
             {
                 if (this.isCovered[i][j])
-                    canvas.drawRect(this.grid[i][j], this.col_covered);
+                {
+                    if(this.isMarked[i][j])
+                        canvas.drawRect(this.grid[i][j], this.col_marked);
+                    else
+                        canvas.drawRect(this.grid[i][j], this.col_covered);
+                }
+
                 else
                 {
                     if (this.isMined[i][j])
@@ -108,27 +122,51 @@ public class GridView extends View
 
         if (event.getActionMasked() == MotionEvent.ACTION_UP && !this.end)
         {
-            int pos_x = (int) (event.getX() / this.size_x);
-            int pos_y = (int) (event.getY() / this.size_y);
-
-            if (pos_x < this.nb_cells && pos_y < this.nb_cells)
+            if(!this.isMarkedMode)
             {
-                if (this.isMined[pos_x][pos_y])
-                {
-                    this.end = true;
-                    this.toast_lose.show();
+                int pos_x = (int) (event.getX() / this.size_x);
+                int pos_y = (int) (event.getY() / this.size_y);
 
-                    for (int i = 0; i < this.nb_cells; i++)
-                        for (int j = 0; j < this.nb_cells; j++)
-                            this.isCovered[i][j] = false;
+                if (pos_x < this.nb_cells && pos_y < this.nb_cells && !this.isMarked[pos_x][pos_y])
+                {
+                    if (!this.isMined[pos_x][pos_y] && this.numbers_in_cells[pos_x][pos_y] == 0)
+                    {
+                        uncover_zero_cells(pos_x, pos_y);
+
+                        if(this.count_covered_cells() == this.nb_mines)
+                            this.toast_win.show();
+                    }
+
+                    else
+                    {
+                        this.isCovered[pos_x][pos_y] = false;
+
+                        if(this.count_covered_cells() == this.nb_mines)
+                            this.toast_win.show();
+                    }
+
+                    if (this.isMined[pos_x][pos_y])
+                    {
+                        this.end = true;
+                        this.toast_lose.show();
+
+                        for (int i = 0; i < this.nb_cells; i++)
+                            for (int j = 0; j < this.nb_cells; j++)
+                                this.isCovered[i][j] = false;
+                    }
                 }
+            }
 
-                else
+            else
+            {
+                int pos_x = (int) (event.getX() / this.size_x);
+                int pos_y = (int) (event.getY() / this.size_y);
+
+                if (pos_x < this.nb_cells && pos_y < this.nb_cells && this.isCovered[pos_x][pos_y])
                 {
-                    uncover_zero_cells(pos_x, pos_y);
-
-                    if (this.count_covered_cells() == this.nb_mines)
-                        this.toast_win.show();
+                    this.isMarked[pos_x][pos_y] = !this.isMarked[pos_x][pos_y];
+                    this.nb_marks += this.isMarked[pos_x][pos_y] ? 1 : -1;
+                    this.tv_markedMines.setText(String.valueOf(this.nb_marks) + " marked mine" + (this.nb_marks > 1 ? "s" : ""));
                 }
             }
 
@@ -221,7 +259,7 @@ public class GridView extends View
 
     private void uncover_zero_cells(int pos_x, int pos_y)
     {
-        if (pos_x >= 0 && pos_x < this.nb_cells && pos_y >= 0 && pos_y < this.nb_cells && this.isCovered[pos_x][pos_y])
+        if (pos_x >= 0 && pos_x < this.nb_cells && pos_y >= 0 && pos_y < this.nb_cells && this.isCovered[pos_x][pos_y] && !this.isMarked[pos_x][pos_y])
         {
             this.isCovered[pos_x][pos_y] = false;
 
@@ -243,7 +281,22 @@ public class GridView extends View
     public void reset()
     {
         init();
+        this.tv_markedMines.setText("0 marked mine");
         invalidate();
+    }
+
+    public void changeMode()
+    {
+        this.isMarkedMode = !this.isMarkedMode;
+    }
+
+    public void set_tv(TextView tv_totalMines, TextView tv_markedMines)
+    {
+        this.tv_totalMines = tv_totalMines;
+        this.tv_markedMines = tv_markedMines;
+
+        this.tv_totalMines.setText(this.nb_mines + " mines");
+        this.tv_markedMines.setText("0 marked mine");
     }
 
     public void set_toats(Toast toast_win, Toast toast_lose)
@@ -264,16 +317,27 @@ public class GridView extends View
         return ret;
     }
 
+    public String getMode()
+    {
+        if(this.isMarkedMode)
+            return "Uncover mode";
+
+        return "Marked mode";
+    }
 
     private int nb_mines;
 
     private Boolean end;
+
+    private Boolean isMarkedMode;
+    private int nb_marks;
 
     private Rect[][] grid;
 
     private Boolean[][] isCovered;
     private Boolean[][] isMined;
     private int[][] numbers_in_cells;
+    private Boolean[][] isMarked;
 
     private int size_x;
     private int size_y;
@@ -281,7 +345,11 @@ public class GridView extends View
     private Paint col_covered;
     private Paint col_uncovered;
     private Paint col_mined;
+    private Paint col_marked;
     private Paint col_M;
+
+    private TextView tv_totalMines;
+    private TextView tv_markedMines;
 
     private Toast toast_win;
     private Toast toast_lose;

@@ -29,6 +29,7 @@ public class MainActivity extends Activity implements View.OnClickListener
         this.btn_mode.setOnClickListener(this);
 
         this.grid = (GridView)findViewById(R.id.gridView);
+        this.grid.set_tv((TextView) findViewById(R.id.tv_totalMines), (TextView) findViewById(R.id.tv_markedMines));
 
         Toast toast_win = Toast.makeText(getApplicationContext(), "YOU WIN!!!", Toast.LENGTH_SHORT);
         Toast toast_lose = Toast.makeText(getApplicationContext(), "YOU LOSE - Try again", Toast.LENGTH_SHORT);
@@ -67,7 +68,13 @@ public class MainActivity extends Activity implements View.OnClickListener
         {
             case R.id.btn_reset:
                 this.grid.reset();
+                this.btn_mode.setText(this.grid.getMode());
                 break;
+            case R.id.btn_mode:
+                this.grid.changeMode();
+                this.btn_mode.setText(this.grid.getMode());
+                break;
+
         }
     }
 }
